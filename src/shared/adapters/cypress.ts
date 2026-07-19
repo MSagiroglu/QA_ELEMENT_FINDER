@@ -38,9 +38,7 @@ export function generateTest(test: Test, options?: { maskPasswords?: boolean }):
       case 'wait': lines.push(`    cy.wait(${parseInt(s.value || '1000')});`); break;
       case 'select': lines.push(`    cy.get('${target}').select('${safeValue}');`); break;
       case 'assert':
-        if (s.assertion?.type === 'visible') lines.push(`    cy.get('${target}').should('be.visible');`);
-        else if (s.assertion?.type === 'text') lines.push(`    cy.get('${target}').should('have.text', '${(s.assertion.expected || '').replace(/'/g, "\\'")}');`);
-        else lines.push(`    cy.get('${target}').should('exist');`);
+        lines.push(generateCypressAssert(target, s.assertion));
         break;
       default: lines.push(`    cy.get('${target}').click();`);
     }
@@ -48,4 +46,47 @@ export function generateTest(test: Test, options?: { maskPasswords?: boolean }):
   lines.push(`  });`);
   lines.push(`});`);
   return lines.join('\n');
+}
+
+function escapeStr(v: string) { return (v || '').replace(/'/g, "\\'"); }
+
+function generateCypressAssert(target: string, assertion?: { type: string; operator?: string; expected?: string; property?: string }): string {
+  if (!assertion) return `    cy.get('${escapeStr(target)}').should('exist');`;
+  const loc = `cy.get('${escapeStr(target)}')`;
+  const exp = escapeStr(assertion.expected || '');
+  const prop = assertion.property || '';
+
+  switch (assertion.type) {
+    case 'visible': return `    ${loc}.should('be.visible');`;
+    case 'not-visible': return `    ${loc}.should('not.be.visible');`;
+    case 'exists': return `    ${loc}.should('exist');`;
+    case 'not-exists': return `    ${loc}.should('not.exist');`;
+    case 'text': return `    ${loc}.should('have.text', '${exp}');`;
+    case 'not-text': return `    ${loc}.should('not.have.text', '${exp}');`;
+    case 'contains-text': return `    ${loc}.should('contain.text', '${exp}');`;
+    case 'not-contains-text': return `    ${loc}.should('not.contain.text', '${exp}');`;
+    case 'value': return `    ${loc}.should('have.value', '${exp}');`;
+    case 'not-value': return `    ${loc}.should('not.have.value', '${exp}');`;
+    case 'attribute': return `    ${loc}.should('have.attr', '${escapeStr(prop)}', '${exp}');`;
+    case 'not-attribute': return `    ${loc}.should('not.have.attr', '${escapeStr(prop)}');`;
+    case 'css-property': return `    ${loc}.should('have.css', '${escapeStr(prop)}', '${exp}');`;
+    case 'css-color': return `    ${loc}.should('have.css', '${escapeStr(prop)}', '${exp}');`;
+    case 'state': {
+      const s = escapeStr(prop);
+      if (s === 'disabled') return `    ${loc}.should('be.disabled');`;
+      if (s === 'enabled') return `    ${loc}.should('be.enabled');`;
+      if (s === 'checked') return `    ${loc}.should('be.checked');`;
+      if (s === 'focused') return `    ${loc}.focused();`;
+      if (s === 'readonly') return `    ${loc}.should('have.attr', 'readonly');`;
+      return `    ${loc}.should('have.attr', '${s}');`;
+    }
+    case 'count': {
+      const op = assertion.operator || 'eq';
+      const matcher = op === 'gt' ? 'be.greaterThan' : op === 'gte' ? 'be.at.least' : op === 'lt' ? 'be.lessThan' : op === 'lte' ? 'be.at.most' : 'eq';
+      return `    ${loc}.should('have.length', '${matcher}', ${parseInt(exp)});`;
+    }
+    case 'class': return `    ${loc}.should('have.class', '${exp}');`;
+    case 'not-class': return `    ${loc}.should('not.have.class', '${exp}');`;
+    default: return `    ${loc}.should('exist');`;
+  }
 }

@@ -1,4 +1,5 @@
-﻿import type { FailMode } from '../shared/types';
+﻿import type { FailMode, AssertionConfig, AssertionOperator } from '../shared/types';
+import { normalizeColor } from '../shared/types';
 import { querySelectorWithShadowSupport } from '../shared/deep-dom';
 
 const MAX_WAIT_MS = 60000;
@@ -112,29 +113,7 @@ async function executeStep(step: { action: string; target: string; value?: strin
     }
     case 'assert': {
       if (!element) return { passed: false, error: 'Assert element not found' };
-      const assertion = step.assertion;
-      if (!assertion) return { passed: false, error: 'No assertion type specified' };
-      switch (assertion.type) {
-        case 'visible':
-          return { passed: element.isConnected && (element as HTMLElement).offsetParent !== null, healed };
-        case 'text':
-          return { passed: element.textContent?.trim() === assertion.expected, healed };
-        case 'attribute': {
-          const eqIdx = assertion.expected.indexOf('=');
-          if (eqIdx > 0) {
-            const attrName = assertion.expected.slice(0, eqIdx);
-            const attrValue = assertion.expected.slice(eqIdx + 1);
-            return { passed: element.getAttribute(attrName) === attrValue, healed };
-          }
-          return { passed: element.hasAttribute(assertion.expected), healed };
-        }
-        case 'value':
-          return { passed: (element as HTMLInputElement).value === assertion.expected, healed };
-        case 'exists':
-          return { passed: element.isConnected, healed };
-        default:
-          return { passed: false, error: `Unknown assertion type: ${assertion.type}` };
-      }
+      return executeAssertion(element, step.assertion as any, step.target, healed);
     }
     default: break;
   }
@@ -198,4 +177,149 @@ async function getPlaySettings(): Promise<{ failMode: FailMode }> {
     }
   } catch {}
   return { failMode: 'stop' };
+}
+
+function compareValues(actual: string | number, operator: AssertionOperator, expected: string): boolean {
+  const numActual = typeof actual === 'number' ? actual : parseFloat(actual);
+  const numExpected = parseFloat(expected);
+  const hasNums = !isNaN(numActual) && !isNaN(numExpected);
+
+  switch (operator) {
+    case 'eq': return String(actual).trim().toLowerCase() === expected.trim().toLowerCase();
+    case 'neq': return String(actual).trim().toLowerCase() !== expected.trim().toLowerCase();
+    case 'gt': return hasNums && numActual > numExpected;
+    case 'gte': return hasNums && numActual >= numExpected;
+    case 'lt': return hasNums && numActual < numExpected;
+    case 'lte': return hasNums && numActual <= numExpected;
+    case 'contains': return String(actual).toLowerCase().includes(expected.toLowerCase());
+    case 'not-contains': return !String(actual).toLowerCase().includes(expected.toLowerCase());
+    case 'matches': try { return new RegExp(expected, 'i').test(String(actual)); } catch { return false; }
+    case 'approx': return hasNums && Math.abs(numActual - numExpected) / Math.max(numExpected, 1) <= 0.1;
+    case 'color-eq': return normalizeColor(String(actual)) === normalizeColor(expected);
+    default: return false;
+  }
+}
+
+function executeAssertion(element: Element, assertion: AssertionConfig, targetSelector: string, healed?: boolean): { passed: boolean; error?: string; healed?: boolean } {
+  if (!assertion) return { passed: false, error: 'No assertion config', healed: false };
+
+  const type = assertion.type;
+  const operator = assertion.operator || 'eq';
+  const expected = assertion.expected || '';
+  const prop = assertion.property || '';
+
+  switch (type) {
+    // ─── Visibility ───
+    case 'visible': {
+      const isVisible = element.isConnected && (element as HTMLElement).offsetParent !== null;
+      return { passed: compareValues(isVisible ? 'true' : 'false', operator, expected || 'true'), healed };
+    }
+    case 'not-visible': {
+      const isInvisible = !element.isConnected || (element as HTMLElement).offsetParent === null;
+      return { passed: isInvisible, healed };
+    }
+
+    // ─── Existence ───
+    case 'exists':
+      return { passed: element.isConnected, healed };
+    case 'not-exists':
+      return { passed: !element.isConnected, healed };
+
+    // ─── Text ───
+    case 'text':
+    case 'not-text':
+    case 'contains-text':
+    case 'not-contains-text': {
+      const actualText = element.textContent?.trim() || '';
+      const passed = compareValues(actualText, operator, expected);
+      return { passed, error: passed ? undefined : `Text: got "${actualText.slice(0, 80)}"`, healed };
+    }
+
+    // ─── Value ───
+    case 'value':
+    case 'not-value': {
+      const actualValue = (element as HTMLInputElement).value || '';
+      return { passed: compareValues(actualValue, operator, expected), error: `Value: got "${actualValue}"`, healed };
+    }
+
+    // ─── Attribute ───
+    case 'attribute':
+    case 'not-attribute': {
+      const attrValue = element.getAttribute(prop) || '';
+      return { passed: compareValues(attrValue, operator, expected), error: `Attr ${prop}: got "${attrValue}"`, healed };
+    }
+
+    // ─── CSS Property ───
+    case 'css-property': {
+      if (!prop) return { passed: false, error: 'No CSS property specified', healed: false };
+      const style = getComputedStyle(element);
+      const actualValue = style.getPropertyValue(prop).trim();
+      return { passed: compareValues(actualValue, operator, expected), error: `CSS ${prop}: got "${actualValue}"`, healed };
+    }
+
+    // ─── CSS Color ───
+    case 'css-color': {
+      if (!prop) return { passed: false, error: 'No color property specified', healed: false };
+      const style = getComputedStyle(element);
+      const raw = style.getPropertyValue(prop).trim();
+      const actualColor = normalizeColor(raw);
+      const expectedColor = normalizeColor(expected);
+      return { passed: actualColor === expectedColor, error: `Color ${prop}: got ${raw} (normalized: ${actualColor})`, healed };
+    }
+
+    // ─── Dimension ───
+    case 'dimension': {
+      const rect = element.getBoundingClientRect();
+      const actualValue = prop === 'height' ? rect.height : rect.width;
+      return { passed: compareValues(actualValue, operator, expected), error: `${prop}: got ${actualValue}px`, healed };
+    }
+
+    // ─── Position ───
+    case 'position': {
+      const rect = element.getBoundingClientRect();
+      const posMap: Record<string, number> = { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom };
+      const actualValue = posMap[prop] ?? NaN;
+      if (isNaN(actualValue)) return { passed: false, error: `Unknown position: ${prop}`, healed: false };
+      return { passed: compareValues(actualValue, operator, expected), error: `${prop}: got ${actualValue}px`, healed };
+    }
+
+    // ─── State ───
+    case 'state': {
+      const input = element as HTMLInputElement;
+      const stateMap: Record<string, boolean> = {
+        disabled: (element as HTMLInputElement).disabled,
+        enabled: !(element as HTMLInputElement).disabled,
+        checked: input.type === 'checkbox' || input.type === 'radio' ? input.checked : false,
+        unchecked: input.type === 'checkbox' || input.type === 'radio' ? !input.checked : true,
+        focused: document.activeElement === element,
+        readonly: (element as HTMLInputElement).readOnly,
+        required: (element as HTMLInputElement).required,
+        selected: (element as HTMLOptionElement).selected,
+        indeterminate: (input as any).indeterminate || false,
+      };
+      const actualState = stateMap[prop] ? 'true' : 'false';
+      return { passed: compareValues(actualState, operator, expected), error: `State ${prop}: ${actualState}`, healed };
+    }
+
+    // ─── Count ───
+    case 'count': {
+      try {
+        const count = document.querySelectorAll(targetSelector).length;
+        return { passed: compareValues(count, operator, expected), error: `Count: ${count}`, healed };
+      } catch {
+        return { passed: false, error: 'Count query failed', healed: false };
+      }
+    }
+
+    // ─── Class ───
+    case 'class':
+    case 'not-class': {
+      const hasClass = element.classList.contains(expected);
+      const passed = type === 'class' ? hasClass : !hasClass;
+      return { passed, error: passed ? undefined : `Class "${expected}": ${hasClass ? 'present' : 'missing'}`, healed };
+    }
+
+    default:
+      return { passed: false, error: `Unknown assertion: ${type}`, healed: false };
+  }
 }

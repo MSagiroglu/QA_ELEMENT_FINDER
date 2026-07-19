@@ -56,14 +56,63 @@ export function generateTest(test: Test, options?: { maskPasswords?: boolean }):
       case 'wait': lines.push(`  await page.waitForTimeout(${parseInt(s.value || '1000')});`); break;
       case 'select': lines.push(`  await page.locator('${target}').selectOption('${safeValue}');`); break;
       case 'assert':
-        if (s.assertion?.type === 'visible') lines.push(`  await expect(page.locator('${target}')).toBeVisible();`);
-        else if (s.assertion?.type === 'text') lines.push(`  await expect(page.locator('${target}')).toHaveText('${(s.assertion.expected || '').replace(/'/g, "\\'")}');`);
-        else if (s.assertion?.type === 'attribute') lines.push(`  await expect(page.locator('${target}')).toHaveAttribute('${(s.assertion.expected || '').replace(/'/g, "\\'")}');`);
-        else lines.push(`  await expect(page.locator('${target}')).toBeVisible();`);
+        lines.push(generatePlaywrightAssert(target, s.assertion));
         break;
       default: lines.push(`  await page.locator('${target}').click();`);
     }
   }
   lines.push('});');
   return lines.join('\n');
+}
+
+function escapeStr(v: string) { return (v || '').replace(/'/g, "\\'"); }
+
+function generatePlaywrightAssert(target: string, assertion?: { type: string; operator?: string; expected?: string; property?: string }): string {
+  if (!assertion) return `  await expect(page.locator('${escapeStr(target)}')).toBeVisible();`;
+  const loc = `page.locator('${escapeStr(target)}')`;
+  const exp = escapeStr(assertion.expected || '');
+  const prop = assertion.property || '';
+
+  switch (assertion.type) {
+    case 'visible': return `  await expect(${loc}).toBeVisible();`;
+    case 'not-visible': return `  await expect(${loc}).not.toBeVisible();`;
+    case 'exists': return `  await expect(${loc}).toBeAttached();`;
+    case 'not-exists': return `  await expect(${loc}).not.toBeAttached();`;
+    case 'text': return `  await expect(${loc}).toHaveText('${exp}');`;
+    case 'not-text': return `  await expect(${loc}).not.toHaveText('${exp}');`;
+    case 'contains-text': return `  await expect(${loc}).toContainText('${exp}');`;
+    case 'not-contains-text': return `  await expect(${loc}).not.toContainText('${exp}');`;
+    case 'value': return `  await expect(${loc}).toHaveValue('${exp}');`;
+    case 'not-value': return `  await expect(${loc}).not.toHaveValue('${exp}');`;
+    case 'attribute': return `  await expect(${loc}).toHaveAttribute('${escapeStr(prop)}', '${exp}');`;
+    case 'not-attribute': return `  await expect(${loc}).not.toHaveAttribute('${escapeStr(prop)}', '${exp}');`;
+    case 'css-property': return `  await expect(${loc}).toHaveCSS('${escapeStr(prop)}', '${exp}');`;
+    case 'css-color': return `  await expect(${loc}).toHaveCSS('${escapeStr(prop)}', '${exp}');`;
+    case 'dimension': {
+      const op = assertion.operator || 'eq';
+      if (op === 'gt' || op === 'gte' || op === 'lt' || op === 'lte') {
+        const fn = op === 'gt' ? 'toBeGreaterThan' : op === 'gte' ? 'toBeGreaterThanOrEqual' : op === 'lt' ? 'toBeLessThan' : 'toBeLessThanOrEqual';
+        return `  await expect(${loc}.boundingBox()).resolves.toHaveProperty('${escapeStr(prop)}');\n  await expect(${loc}.boundingBox()).resolves.${fn}(${parseFloat(exp)});`;
+      }
+      return `  await expect(${loc}).toHaveCSS('${escapeStr(prop)}', '${exp}px');`;
+    }
+    case 'state': {
+      const s = escapeStr(prop);
+      if (s === 'disabled') return `  await expect(${loc}).toBeDisabled();`;
+      if (s === 'enabled') return `  await expect(${loc}).toBeEnabled();`;
+      if (s === 'checked') return `  await expect(${loc}).toBeChecked();`;
+      if (s === 'focused') return `  await expect(${loc}).toBeFocused();`;
+      if (s === 'readonly') return `  await expect(${loc}).toHaveAttribute('readonly', '');`;
+      if (s === 'required') return `  await expect(${loc}).toHaveAttribute('required', '');`;
+      return `  await expect(${loc}).toHaveAttribute('${s}', '');`;
+    }
+    case 'count': {
+      const op = assertion.operator || 'eq';
+      const matcher = op === 'gt' ? 'toBeGreaterThan' : op === 'gte' ? 'toBeGreaterThanOrEqual' : op === 'lt' ? 'toBeLessThan' : op === 'lte' ? 'toBeLessThanOrEqual' : 'toBe';
+      return `  await expect(page.locator('${escapeStr(target)}')).${matcher}(${parseInt(exp)});`;
+    }
+    case 'class': return `  await expect(${loc}).toHaveClass(/${exp}/);`;
+    case 'not-class': return `  await expect(${loc}).not.toHaveClass(/${exp}/);`;
+    default: return `  await expect(${loc}).toBeVisible();`;
+  }
 }
