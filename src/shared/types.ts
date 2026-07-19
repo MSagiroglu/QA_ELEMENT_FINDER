@@ -1,6 +1,6 @@
 export type ActionType = 'click' | 'fill' | 'type' | 'hover' | 'select' | 'assert' | 'wait' | 'navigate' | 'scroll';
 
-export type Framework = 'playwright-ts' | 'cypress-ts' | 'selenium-python' | 'selenium-java';
+export type Framework = 'playwright-ts' | 'cypress-ts' | 'selenium-python' | 'selenium-java' | 'cucumber-java';
 
 export type StepResult = 'pending' | 'running' | 'passed' | 'failed' | 'error';
 

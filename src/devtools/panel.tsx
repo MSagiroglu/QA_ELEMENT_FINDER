@@ -303,6 +303,7 @@ function GeneratorPanel({ framework, onFrameworkChange, pageElements, codeOutput
           <option value="cypress-ts">Cypress (TypeScript)</option>
           <option value="selenium-python">Selenium (Python)</option>
           <option value="selenium-java">Selenium (Java/JUnit5)</option>
+          <option value="cucumber-java">Cucumber (Java/Selenium)</option>
         </select>
 
         <button className="btn btn-primary" onClick={() => {

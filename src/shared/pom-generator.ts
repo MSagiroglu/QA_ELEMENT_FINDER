@@ -3,6 +3,7 @@ import * as playwright from './adapters/playwright';
 import * as cypress from './adapters/cypress';
 import * as selenium from './adapters/selenium-python';
 import * as java from './adapters/selenium-java';
+import * as cucumber from './adapters/cucumber-java';
 
 export interface POMGeneratorAdapter {
   generatePageClass(elements: PageElement[], options?: { maskPasswords?: boolean }): string;
@@ -20,6 +21,7 @@ const adapters: Record<Framework, POMGeneratorAdapter> = {
   'cypress-ts': cypress,
   'selenium-python': selenium,
   'selenium-java': java,
+  'cucumber-java': cucumber,
 };
 
 export function getGenerator(framework: Framework): POMGeneratorAdapter {
