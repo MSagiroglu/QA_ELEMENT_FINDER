@@ -85,6 +85,7 @@ const OptionsApp: React.FC = () => {
             <option value="playwright-ts">Playwright (TypeScript)</option>
             <option value="cypress-ts">Cypress (TypeScript)</option>
             <option value="selenium-python">Selenium (Python)</option>
+            <option value="selenium-java">Selenium (Java/JUnit5)</option>
           </select>
         </Field>
         <Field label="Indentation">

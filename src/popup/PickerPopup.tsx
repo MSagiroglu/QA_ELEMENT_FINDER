@@ -335,6 +335,7 @@ function SettingsView({ onBack }: { onBack: () => void }) {
             <option value="playwright-ts">Playwright (TypeScript)</option>
             <option value="cypress-ts">Cypress (TypeScript)</option>
             <option value="selenium-python">Selenium (Python)</option>
+            <option value="selenium-java">Selenium (Java/JUnit5)</option>
           </select>
         </Field>
         <Field label="Timeout (ms)">

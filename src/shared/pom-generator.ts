@@ -2,6 +2,7 @@ import type { PageElement, Test, Framework } from './types';
 import * as playwright from './adapters/playwright';
 import * as cypress from './adapters/cypress';
 import * as selenium from './adapters/selenium-python';
+import * as java from './adapters/selenium-java';
 
 export interface POMGeneratorAdapter {
   generatePageClass(elements: PageElement[], options?: { maskPasswords?: boolean }): string;
@@ -18,6 +19,7 @@ const adapters: Record<Framework, POMGeneratorAdapter> = {
   'playwright-ts': playwright,
   'cypress-ts': cypress,
   'selenium-python': selenium,
+  'selenium-java': java,
 };
 
 export function getGenerator(framework: Framework): POMGeneratorAdapter {

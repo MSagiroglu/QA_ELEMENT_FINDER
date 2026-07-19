@@ -302,6 +302,7 @@ function GeneratorPanel({ framework, onFrameworkChange, pageElements, codeOutput
           <option value="playwright-ts">Playwright (TypeScript)</option>
           <option value="cypress-ts">Cypress (TypeScript)</option>
           <option value="selenium-python">Selenium (Python)</option>
+          <option value="selenium-java">Selenium (Java/JUnit5)</option>
         </select>
 
         <button className="btn btn-primary" onClick={() => {

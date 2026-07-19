@@ -55,7 +55,8 @@ Tüm veriler **lokal** kalır — hiçbir sunucuya veri gönderilmez, telemetri 
 | **Selector Stress Test** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Playwright POM** | ✅ | ❌ | ❌ | ❌ | ✅ |
 | **Cypress POM** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Selenium POM** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Selenium POM (Python)** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Selenium POM (Java/JUnit5)** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Real Typing Simulation** | ✅ | ❌ (JS inject) | ❌ (JS inject) | ✅ | ✅ |
 | **Manifest V3** | ✅ | ✅ | ❌ (V2) | ❌ | N/A |
 | **Cross-browser (Chrome/Edge/Firefox)** | ✅ | ✅ | ⚠️ (Chrome/Firefox) | ❌ (Chrome only) | ✅ |
@@ -129,7 +130,8 @@ Bir elementin ID veya class olmadan benzersiz şekilde seçilip seçilemeyeceği
 |-----------|-----|-------|------|
 | **Playwright** | TypeScript | `AppPage` class + typed locators | `test()` blokları |
 | **Cypress** | TypeScript | `AppPage` class + getter | `describe()`/`it()` blokları |
-| **Selenium** | Python | `AppPage` class + `By` tuple | `pytest` class |
+| **Selenium (Python)** | Python | `AppPage` class + `By` tuple | `pytest` class |
+| **Selenium (Java)** | Java | `AppPage` class + `@FindBy` | JUnit 5 test class |
 
 ### 🖥 UI Panelleri
 
@@ -337,7 +339,7 @@ DevTools → Recorder → Bir adım seç → "Add Assertion"
 DevTools → Generator sekmesi
 ```
 
-1. **Framework seçin:** Playwright (TS), Cypress (TS) veya Selenium (Python)
+1. **Framework seçin:** Playwright (TS), Cypress (TS), Selenium (Python) veya Selenium (Java/JUnit5)
 2. **"Generate POM"** butonuna tıklayın
 3. **Her assertion tipi için** framework'e uygun assertion kodu üretilir:
    - Playwright: `await expect(page.locator(...)).toBeVisible()`
