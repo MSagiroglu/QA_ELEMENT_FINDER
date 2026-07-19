@@ -2,7 +2,7 @@
 import { normalizeColor } from '../shared/types';
 import { querySelectorWithShadowSupport } from '../shared/deep-dom';
 
-const MAX_WAIT_MS = 60000;
+const MAX_WAIT_MS = 120000;
 
 let playing = false;
 let abortController = false;

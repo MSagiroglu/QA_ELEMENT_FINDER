@@ -121,7 +121,7 @@ Bir elementin ID veya class olmadan benzersiz şekilde seçilip seçilemeyeceği
 - React/Angular kontrollu inputlar için native setter pattern
 - Assertion tipleri: `visible`, `text`, `attribute`, `value`, `exists`
 - Fail modu: hata durumunda dur veya devam et
-- Zaman aşımı sınırlaması (60 sn tavan)
+- Zaman aşımı sınırlaması (120 sn tavan)
 
 ### 📄 POM Code Generator (POM Kod Üretici)
 
