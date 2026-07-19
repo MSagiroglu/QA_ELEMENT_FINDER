@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>QA Element Finder Test Page</title></head>
+<body>
+  <h1>Test Page</h1>
+
+  <!-- Elements with data-testid (should get highest priority selectors) -->
+  <button data-testid="login-btn" data-cy="login-cy" class="btn primary">Login</button>
+  <input data-testid="email-input" type="email" placeholder="Email" />
+  <input data-testid="password-input" type="password" placeholder="Password" />
+
+  <!-- Elements with ARIA roles -->
+  <div role="button" aria-label="Submit Form" tabindex="0">Submit</div>
+  <nav aria-label="Main Navigation">
+    <a href="/home">Home</a>
+    <a href="/about">About</a>
+  </nav>
+
+  <!-- Elements with IDs and classes -->
+  <div id="unique-section" class="section-container">
+    <p class="description-text">This is a unique paragraph with a very specific description text content that should be findable.</p>
+    <span class="badge badge-primary">Active</span>
+    <span class="badge badge-secondary">Inactive</span>
+  </div>
+
+  <!-- Duplicate elements (should NOT produce unique selectors) -->
+  <div class="duplicate-container">
+    <span class="item">Item 1</span>
+    <span class="item">Item 2</span>
+    <span class="item">Item 3</span>
+  </div>
+
+  <!-- Form for recording tests -->
+  <form id="login-form">
+    <label>Username: <input name="username" class="form-input" /></label>
+    <label>Password: <input name="password" type="password" class="form-input" /></label>
+    <button type="submit" class="btn primary">Sign In</button>
+  </form>
+
+  <!-- Select dropdown -->
+  <select data-testid="country-select">
+    <option value="tr">Turkey</option>
+    <option value="us">United States</option>
+    <option value="uk">United Kingdom</option>
+  </select>
+
+  <!-- Checkboxes -->
+  <label><input type="checkbox" name="agree" /> I agree</label>
+  <label><input type="checkbox" name="newsletter" /> Subscribe</label>
+
+  <script>
+    // Add some dynamic behavior
+    document.getElementById('login-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const msg = document.createElement('div');
+      msg.id = 'submit-result';
+      msg.textContent = 'Form submitted!';
+      document.body.appendChild(msg);
+    });
+  </script>
+</body>
+</html>

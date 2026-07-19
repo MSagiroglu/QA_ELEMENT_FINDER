@@ -1,0 +1,10 @@
+﻿node_modules
+dist
+*.zip
+.env
+.DS_Store
+*.log
+.test-logs
+.test-user-data*
+.headed-test*
+test-results.txt
