@@ -186,33 +186,234 @@ Artık gizli pencerede de uzantı aktif.
 
 ## 📖 Kullanım Kılavuzu
 
-### TR — Adım Adım
+### 1. Element Seçme (Element Picker)
+
+**Amaç:** Sayfadaki herhangi bir HTML elementinin tüm selector alternatiflerini görme.
 
 ```
-1. Popup'tan "Pick Element" tıkla
-2. Sayfada istediğin elemanın üzerine gel → yeşil overlay gör
-3. Tıkla → selector listesi DevTools/Popup'ta açılır
-4. İstediğin selector'ı 📋 ile kopyala
-5. "Record" tıkla → sayfada işlemlerini yap → "Stop" ile durdur
-6. "Play" ile testi tekrar oynat
-7. Generator sekmesinden framework seç → "Generate POM" → kodu al
+Popup → "Pick Element" butonu
 ```
+
+- Fareyi elementlerin üzerinde gezdirin → yeşil overlay + tooltip (tag, id, class, en iyi selector) gösterilir
+- Tıklayın → Popup'ta tüm selector alternatifleri puan sırasına göre listelenir
+- **↑/↓ tuşları** ile sayfadaki tüm interaktif elementler arasında gezinebilirsiniz (shadow DOM ve iframe içindekiler dahil)
+- **Enter** ile seçim yapın, **Escape** ile picker modundan çıkın
+- Her selector'un yanındaki 📋 butonu ile panoya kopyalayın
+
+### 2. Selector Doğrulama (Inspector)
+
+**Amaç:** Seçtiğiniz elementin selector'larının benzersiz (unique) olup olmadığını görme.
+
+Element seçildiğinde Popup/DevTools'da gösterilen her selector:
+- ✅ **Yeşil** — sayfada tek bir elementi hedefler (güvenli)
+- ⚠️ **Sarı** — birden fazla element eşleşir (riskli)
+- ❌ **Kırmızı** — hiçbir element bulamaz (kırık)
+
+**Selector Stress Test (Dayanıklılık Testi):**
+
+DevTools → Inspector sekmesinde "Stress Test" butonu:
+- ID'siz halde selector unique mi?
+- Class'sız halde selector unique mi?
+- Sadece semantik selector'lar (tag + pozisyon) ile unique mi?
+- Sonuç: ✅ Başarılı / ⚠️ Zayıf / ❌ Başarısız
+
+### 3. Selector Lab (Laboratuvar)
+
+**Amaç:** Kendi yazdığınız CSS selector veya XPath ifadesini sayfada test etme.
+
+```
+DevTools → "Lab" sekmesi
+```
+
+1. CSS selector (örn. `[data-testid="login-btn"]`) veya XPath (`//button[text()="Gönder"]`) yazın
+2. "Highlight" butonuna tıklayın
+3. Sayfada eşleşen tüm elementler **mavi outline** ile vurgulanır, sayı gösterilir
+4. Shadow DOM ve iframe içindeki elementler de taranır
+
+### 4. Aksiyon Kaydetme (Recorder)
+
+**Amaç:** Tarayıcıda yaptığınız işlemleri adım adım kaydetme.
+
+```
+Popup → "Record" butonu (veya DevTools → Recorder → Record)
+```
+
+**Otomatik yakalanan aksiyonlar:**
+
+| Aksiyon | Tetiklenme | Örnek |
+|---------|-----------|-------|
+| `click` | Her tıklama | Buton, link, checkbox tıklaması |
+| `fill` | Input alanına yazı (300ms debounce) | Arama kutusuna "laptop" yazmak |
+| `type` | Input alanına gerçek tuş vuruşu | React/Angular kontrollü inputlar |
+| `select` | Dropdown seçimi | Select elementinde option seçimi |
+| `submit` | Form gönderimi | Login formu submit |
+| `navigate` | URL değişimi | Sayfa değiştirme, SPA route geçişi |
+
+**Önemli:** Sayfa değiştirmeden (navigate) önce kaydı durdurun, yoksa state kaybolur.
+
+```
+Kaydı Başlat → İşlemleri yap (tıkla, yaz, seç, sayfa değiştir) → "Stop" ile durdur
+```
+
+**Güvenlik:** Şifre alanları otomatik maskelenir, storage'da `********` olarak saklanır.
+
+### 5. Adım Düzenleme (Step Editor)
+
+**Amaç:** Kayıt sonrası adımları yeniden sıralama veya silme.
+
+```
+DevTools → Recorder sekmesi
+```
+
+- **↑↓ okları** ile adımların sırasını değiştirin
+- **🗑️ çöp kutusu** ile gereksiz adımları silin
+- Yeniden kaydetmeye gerek kalmadan test akışını düzenleyin
+
+### 6. URL'ye Gitme (Navigate)
+
+**Amaç:** Belirli bir URL'ye gitme adımı ekleme veya kaydetme.
+
+- **Otomatik:** Sayfa değiştirdiğinizde `navigate` adımı otomatik kaydedilir
+- **Manuel ekleme:** Player sekmesinde "Navigate" butonu ile URL girip adım ekleyebilirsiniz
+- **POM çıktısı:** Playwright → `page.goto('url')`, Cypress → `cy.visit('url')`, Selenium → `driver.get('url')`
+
+### 7. Test Oynatma (Player)
+
+**Amaç:** Kaydedilen testi tarayıcıda yeniden çalıştırma.
+
+```
+DevTools → Player sekmesi → "Play" butonu
+```
+
+**Self-Healing (Kendini Onarma):**
+
+Oynatma sırasında bir element bulunamazsa:
+1. Kayıt sırasında üretilen yedek selector'lar sırayla (puan sırasına göre) denenir
+2. Başarılı olursa adım "🩹 healed" olarak işaretlenir
+3. Oynatma kaldığı yerden devam eder
+4. Hiçbir selector çalışmazsa adım "❌ failed" olarak işaretlenir
+
+**Ayarlar:**
+- **Fail Mode:** `stop` (hatada dur) veya `continue` (hatayı geç)
+- **Timeout:** Her adım için maksimum bekleme süresi (varsayılan: 5000ms)
+- Shadow DOM ve iframe içindeki elementler de otomatik taranır
+
+### 8. Doğrulama Ekleme (Assertion)
+
+**Amaç:** Test adımları arasına kontrol noktaları ekleme.
+
+```
+DevTools → Recorder → Bir adım seç → "Add Assertion"
+```
+
+**Desteklenen assertion tipleri:**
+
+| Tip | Açıklama | Örnek |
+|-----|----------|-------|
+| `visible` | Element görünür mü? | Buton ekranda görünüyor |
+| `not-visible` | Element görünmez mi? | Loading spinner kayboldu |
+| `exists` | DOM'da var mı? | Hata mesajı eklendi |
+| `not-exists` | DOM'da yok mu? | Popup kapandı |
+| `text` | Metin eşleşiyor mu? | "Hoşgeldiniz" yazısı |
+| `contains-text` | Metin içeriyor mu? | "başarılı" kelimesi geçiyor |
+| `value` | Input değeri doğru mu? | Email alanı "test@x.com" |
+| `attribute` | Attribute doğru mu? | Link href'i "/home" |
+| `css-property` | CSS değeri doğru mu? | font-size: 16px, opacity: 1 |
+| `css-color` | Renk doğru mu? | background: #3B82F6 |
+| `dimension` | Boyut doğru mu? | width >= 200px |
+| `position` | Pozisyon doğru mu? | x = 100, y = 200 |
+| `state` | Element durumu? | disabled, checked, focused |
+| `count` | Kaç tane var? | 3 tane li elementi |
+| `class` | Class'ı var mı? | "active" class'ı |
+| `not-class` | Class'ı yok mu? | "error" class'ı yok |
+
+**Operatörler:** `=` (eşit), `≠`, `>`, `≥`, `<`, `≤`, `içerir`, `regex eşleşmesi`, `yaklaşık` (±tolerans)
+
+### 9. POM Kod Üretme (Generator)
+
+**Amaç:** Kayıttan otomatik Page Object Model test kodu oluşturma.
+
+```
+DevTools → Generator sekmesi
+```
+
+1. **Framework seçin:** Playwright (TS), Cypress (TS) veya Selenium (Python)
+2. **"Generate POM"** butonuna tıklayın
+3. **Her assertion tipi için** framework'e uygun assertion kodu üretilir:
+   - Playwright: `await expect(page.locator(...)).toBeVisible()`
+   - Cypress: `cy.get(...).should('be.visible')`
+   - Selenium: `assert element.is_displayed()`
+4. **📋 Kopyala** veya **💾 İndir** (JSON)
+
+**Output yapısı:**
+- `AppPage` class'ı (locator'lar)
+- `test()` bloğu (aksiyonlar + assertionlar)
+- Bağımsız çalıştırılabilir, CI/CD'ya hazır
+
+### 10. Shadow DOM ve Iframe İşlemleri
+
+**Amaç:** Gölge DOM (web component) ve iframe içindeki elementleri seçme/kaydetme.
+
+- Element picker, shadow DOM ve iframe içindeki elementleri otomatik bulur
+- Seçici olarak `>>` pierce chain kullanılır (örn. `my-component >> button`)
+- Kayıt, oynatma ve doğrulama tüm bağlamlarda çalışır
+- **Sınırlama:** Cross-origin iframe'ler incelenemez (tarayıcı güvenlik politikası)
+
+### 11. Dışa/İçe Aktarma (Export/Import)
+
+**Amaç:** Testleri JSON olarak kaydetme ve paylaşma.
+
+```
+Popup → Settings → Export / Import
+```
+
+- **Export:** Tüm testler → JSON dosyası indir
+- **Import:** JSON dosyası yükle → testler otomatik yüklenir
+- Takım arkadaşlarınızla JSON paylaşarak test aktarımı
+
+### 12. Headless/CI Kullanımı (Playwright ile)
+
+**Amaç:** Extension'ı Playwright testlerinde kullanma.
+
+```typescript
+// headed-test.ts içinde:
+const context = await chromium.launchPersistentContext(userDataDir, {
+  headless: false,
+  args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`]
+});
+// NOT: --load-extension headed modda çalışmaz.
+// Workaround: context.addInitScript(fs.readFileSync('./dist/content-script-standalone.js', 'utf-8'));
+```
+
+Detaylı örnek için proje kökündeki `headed-test.ts` dosyasına bakın.
 
 ### İlk Çalıştırma Senaryosu (Amazon'da)
 
 ```javascript
-// Popup → Pick Element
-// Amazon logo'ya tıkla → selector listesini gör
-// Çıktı: [role="navigation"][aria-label="Primary"] (score:80)
+// 1. Popup → "Pick Element"
+//    Amazon logo'ya tıkla → selector listesini gör
+//    Çıktı: [role="navigation"][aria-label="Primary"] (score:80)
 
-// Popup → Record
-// Arama kutusuna tıkla, "laptop" yaz, ara butonuna tıkla
-// Popup → Stop
-// DevTools → Generator → Playwright seç → Generate POM
-// Çıktı:
-//   page.locator('#twotabsearchtextbox').click();
-//   page.locator('#twotabsearchtextbox').fill('laptop');
-//   page.locator('#nav-search-submit-button').click();
+// 2. Popup → "Record"
+//    Arama kutusuna tıkla, "laptop" yaz, ara butonuna tıkla
+//    Sayfa değişince "Stop" → kayıt durur
+
+// 3. DevTools → Recorder
+//    Adımları kontrol et, sıralamayı düzenle, gereksizleri sil
+
+// 4. DevTools → Recorder → "Add Assertion"
+//    Assertion tipi: contains-text → değer: "sonuç"
+//    Arama sonuçlarının geldiğini doğrula
+
+// 5. DevTools → Player → "Play"
+//    Self-healing ile oynat, varsa healed adımları gör
+
+// 6. DevTools → Generator → Playwright seç → "Generate POM"
+//    Çıktı:
+//      await page.locator('#twotabsearchtextbox').click();
+//      await page.locator('#twotabsearchtextbox').fill('laptop');
+//      await page.locator('#nav-search-submit-button').click();
+//      await expect(page.locator('[data-component-type="s-search-result"]')).toContainText('sonuç');
 ```
 
 ---
