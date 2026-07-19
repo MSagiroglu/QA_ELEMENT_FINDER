@@ -1,4 +1,54 @@
 import type { SelectorSet, PageElement } from './types';
+import { getElementShadowRoot, querySelectorAllWithShadowSupport, querySelectorWithShadowSupport } from './deep-dom';
+
+function isInShadowDom(el: Element): ShadowRoot | null {
+  return getElementShadowRoot(el);
+}
+
+function isInIframe(el: Element): Document | null {
+  let current: Node | null = el;
+  while (current) {
+    if (current instanceof Document) {
+      if (current !== document) return current;
+      break;
+    }
+    current = current.parentNode;
+  }
+  return null;
+}
+
+function findIframeForDocumentInChain(doc: Document): HTMLIFrameElement | null {
+  try {
+    const allIframes = document.querySelectorAll('iframe');
+    for (const iframe of allIframes) {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc === doc) return iframe;
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
+function getShadowHostChain(el: Element): Element[] {
+  const chain: Element[] = [];
+  let current: Node | null = el;
+  while (current) {
+    if (current instanceof ShadowRoot) {
+      chain.push(current.host);
+      current = current.host;
+    } else if (current instanceof Document) {
+      if (current !== document) {
+        const iframe = findIframeForDocumentInChain(current);
+        if (iframe) chain.push(iframe);
+      }
+      break;
+    } else {
+      current = current.parentNode;
+    }
+  }
+  return chain;
+}
 
 export function generateUniqueSelectors(el: Element): SelectorSet[] {
   const results: SelectorSet[] = [];
@@ -25,6 +75,72 @@ export function generateUniqueSelectors(el: Element): SelectorSet[] {
     .map(s => verifyUniqueness(s, el.ownerDocument!))
     .filter(s => s.matchCount === 1)
     .sort((a, b) => b.score - a.score);
+}
+
+function buildDeepSelector(el: Element, innerSelector: string): string {
+  const chain = getShadowHostChain(el);
+  if (chain.length === 0) return innerSelector;
+
+  // Build a deep selector from outer to inner
+  // For elements in shadow DOM: host >> inner
+  // For elements in iframe: iframe#id >> inner
+  let deepSel = innerSelector;
+  for (const host of chain) {
+    const hostSel = getBestCSSSelectorForElement(host);
+    if (host.tagName.toLowerCase() === 'iframe') {
+      deepSel = `${hostSel} >> ${deepSel}`;
+    } else {
+      deepSel = `${hostSel} >> ${deepSel}`;
+    }
+  }
+  return deepSel;
+}
+
+function getBestCSSSelectorForElement(el: Element): string {
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  const tag = el.tagName.toLowerCase();
+  const dataAttrs = ['data-testid', 'data-test-id', 'data-cy', 'data-qa', 'data-test'];
+  for (const attr of dataAttrs) {
+    const val = el.getAttribute(attr);
+    if (val) return `[${attr}="${val}"]`;
+  }
+  const classes = Array.from(el.classList).filter(c => c.length > 1).slice(0, 1);
+  if (classes.length > 0) return `${tag}.${CSS.escape(classes[0])}`;
+  return tag;
+}
+
+export function generateUniqueSelectorsDeep(el: Element): SelectorSet[] {
+  const isShadow = isInShadowDom(el);
+  const isFrame = isInIframe(el);
+  const plainSelectors = generateUniqueSelectors(el);
+
+  if (!isShadow && !isFrame) return plainSelectors;
+
+  // Generate deep pierce selectors for shadow DOM / iframe elements
+  const deepSelectors = plainSelectors.map(s => ({
+    ...s,
+    selector: buildDeepSelector(el, s.selector),
+    score: s.score - 10,
+    strategy: s.strategy as SelectorSet['strategy'],
+  }));
+
+  // Also add a shadow-piercing CSS selector specifically for shadow DOM
+  if (isShadow) {
+    const chain = getShadowHostChain(el);
+    if (chain.length > 0) {
+      const host = chain[0];
+      const hostSel = getBestCSSSelectorForElement(host);
+      const innerSel = generateUniqueSelectors(el).find(s => s.strategy === 'css' || s.strategy === 'data-attribute');
+      if (innerSel) {
+        const pierceSel = `${hostSel} >>> ${innerSel.selector}`;
+        if (!deepSelectors.find(s => s.selector === pierceSel)) {
+          deepSelectors.push({ strategy: 'css', selector: pierceSel, score: 65, matchCount: 1 });
+        }
+      }
+    }
+  }
+
+  return deepSelectors.sort((a, b) => b.score - a.score);
 }
 
 function getDataAttributeSelector(el: Element): SelectorSet | null {
@@ -178,7 +294,7 @@ function verifyUniqueness(sel: SelectorSet, doc: Document): SelectorSet {
       const elements = doc.querySelectorAll(tag);
       count = Array.from(elements).filter(el => el.textContent?.trim() === textContent).length;
     } else {
-      count = doc.querySelectorAll(sel.selector).length;
+      count = querySelectorAllWithShadowSupport(sel.selector).length;
     }
     const result = { ...sel, matchCount: count };
     delete (result as any).__textContent;
@@ -275,7 +391,10 @@ export function queryElement(selectorSet: SelectorSet, doc: Document = document)
       const result = doc.evaluate(selectorSet.selector, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
       return result.singleNodeValue as Element | null;
     }
-    return doc.querySelector(selectorSet.selector);
+    const el = doc.querySelector(selectorSet.selector);
+    if (el) return el;
+    // Fall back to shadow DOM / iframe traversal
+    return querySelectorWithShadowSupport(selectorSet.selector);
   } catch {
     return null;
   }

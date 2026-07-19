@@ -1,4 +1,4 @@
-import { generateUniqueSelectors, getBestSelector } from './selector-engine';
+import { generateUniqueSelectorsDeep, getBestSelector } from './selector-engine';
 
 export function extractQuickSelector(el: Element): string {
   const best = getBestSelector(el);
@@ -17,7 +17,7 @@ export function extractQuickSelector(el: Element): string {
 }
 
 export function extractRecordedStep(el: Element, action: string, value?: string) {
-  const selectors = generateUniqueSelectors(el);
+  const selectors = generateUniqueSelectorsDeep(el);
   const best = selectors[0];
   return {
     action,

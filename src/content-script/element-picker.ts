@@ -1,4 +1,5 @@
 ﻿import { extractQuickSelector } from '../shared/utils';
+import { getClickableElements } from '../shared/deep-dom';
 
 let pickerActive = false;
 let hoveredElement: Element | null = null;
@@ -127,12 +128,7 @@ function onClick(e: MouseEvent): void {
 }
 
 function getInteractableElements(): Element[] {
-  const all = document.querySelectorAll('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="searchbox"], [role="combobox"], label, iframe, video, audio, details, summary, [onclick], [contenteditable="true"]');
-  return Array.from(all).filter(el => {
-    if (!(el instanceof HTMLElement)) return false;
-    const style = getComputedStyle(el);
-    return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
-  });
+  return getClickableElements();
 }
 
 function clearKeyboardHighlight(): void {

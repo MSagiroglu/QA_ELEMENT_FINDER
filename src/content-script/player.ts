@@ -1,4 +1,5 @@
 ﻿import type { FailMode } from '../shared/types';
+import { querySelectorWithShadowSupport } from '../shared/deep-dom';
 
 const MAX_WAIT_MS = 60000;
 
@@ -148,9 +149,14 @@ function findElement(selector: string): Element | null {
       const result = document.evaluate(selector, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
       return result.singleNodeValue as Element | null;
     }
-    return document.querySelector(selector);
+    if (selector.includes('>>') || selector.includes('>>>')) {
+      return querySelectorWithShadowSupport(selector);
+    }
+    const el = document.querySelector(selector);
+    if (el) return el;
+    return querySelectorWithShadowSupport(selector);
   } catch {
-    return null;
+    try { return querySelectorWithShadowSupport(selector); } catch { return null; }
   }
 }
 

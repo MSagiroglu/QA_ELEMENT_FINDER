@@ -1,3 +1,5 @@
+import { querySelectorAllWithShadowSupport } from '../shared/deep-dom';
+
 let verifyOverlayContainer: HTMLDivElement | null = null;
 let verifyBadgeContainer: HTMLDivElement | null = null;
 
@@ -31,7 +33,7 @@ export function highlightSelector(selector: string, type: string): { matchCount:
     }
   } else {
     try {
-      elements = Array.from(document.querySelectorAll(selector));
+      elements = querySelectorAllWithShadowSupport(selector);
     } catch {
       return { matchCount: 0, selector };
     }
