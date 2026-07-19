@@ -57,6 +57,12 @@ Tüm veriler **lokal** kalır — hiçbir sunucuya veri gönderilmez, telemetri 
 | **Cypress POM** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Selenium POM (Python)** | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Selenium POM (Java/JUnit5)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Cucumber BDD (Java)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Shadow DOM Desteği** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Iframe Desteği (same-origin)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **20+ Assertion Tipi** | ✅ | ⚠️ (5) | ⚠️ (4) | ⚠️ (6) | ⚠️ (limited) |
+| **Renk Karşılaştırma (CSS color)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Regex & Toleranslı Assertion** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Real Typing Simulation** | ✅ | ❌ (JS inject) | ❌ (JS inject) | ✅ | ✅ |
 | **Manifest V3** | ✅ | ✅ | ❌ (V2) | ❌ | N/A |
 | **Cross-browser (Chrome/Edge/Firefox)** | ✅ | ✅ | ⚠️ (Chrome/Firefox) | ❌ (Chrome only) | ✅ |
@@ -67,8 +73,23 @@ Tüm veriler **lokal** kalır — hiçbir sunucuya veri gönderilmez, telemetri 
 
 ### Yeni Eklenen Özellikler (v2.0)
 
-#### ⌨️ Keyboard DOM Walking
-Element seçici modunda iken **↑/↓** tuşları ile sayfadaki tüm interaktif elementler arasında gezinebilir, **Enter** ile seçim yapabilirsiniz. Mouse ile seçimi zor olan dropdown, tooltip gibi elementler için idealdir.
+#### ⌨️ Gelişmiş Klavye DOM Gezintisi
+Element seçici modunda iken **klavye ile** sayfadaki tüm interaktif elementler arasında gezinebilirsiniz. Mouse ile seçimi zor olan dropdown, tooltip, modal elementleri için idealdir.
+
+| Tuş | İşlev |
+|-----|-------|
+| **↑ / ↓** | 1'er element ileri/geri gezin |
+| **Shift + ↑/↓** | 5'er atla (hızlı gezinme) |
+| **PageUp / PageDown** | 10'ar atla |
+| **Home / End** | İlk/son elemente git |
+| **Tab / Shift+Tab** | Sadece form elementleri (input, button) filtrele |
+| **1-9** | Element tipine göre filtre: 1=button, 2=input, 3=link, 4=checkbox/radio, 5=select, 6=textarea, 7=img, 8=heading, 9=tümü |
+| **Enter** | Seçili elementi seç |
+| **C** | Seçmeden selector'ı panoya kopyala |
+| **S** | Stress test çalıştır (tooltip'te sonuç) |
+| **Esc** | Picker modundan çık |
+
+Alt orta kısımda **status bar** görünür: `[3/42] Filter: Buttons | ↑↓ Navigate ↵ Select Esc Exit C Copy S Stress`
 
 #### 🩹 Self-Healing Selector (Kendini Onaran Seçici)
 Replay sırasında bir element birincil selector ile bulunamazsa, kayıt sırasında üretilen alternatif selector'lar otomatik olarak (score sırasına göre) denenir. Başarılı olursa adım "healed" olarak işaretlenir ve replay devam eder. Piyasada sadece Katalon Recorder'da bulunan bu özellik artık sizde ücretsiz.
@@ -81,6 +102,23 @@ Kaydedilen test adımlarını kayıt sonrası düzenleyin: sıralamayı değişt
 
 #### 💪 Selector Stress Test (Seçici Dayanıklılık Testi)
 Bir elementin ID veya class olmadan benzersiz şekilde seçilip seçilemeyeceğini test eder. Dinamik ID/class kullanan sayfalarda selector'larınızın ne kadar dayanıklı olduğunu görün.
+
+#### 🥒 Cucumber BDD Code Generator
+Kayıtları **Gherkin dilinde `.feature` dosyasına** ve **StepDefinitions.java** glue koduna dönüştürür. Her aksiyon doğal dilde bir Gherkin step'ine eşlenir:
+
+```
+Feature: Login Test
+
+  Scenario: Login Test - recorded actions
+    Given I navigate to "https://example.com"
+    When I fill "user@email.com" into "#email"
+    And I fill "********" into "#password"
+    And I click on "#login-btn"
+    Then "#welcome" should be visible
+    And "#welcome" should contain text "Hoşgeldiniz"
+```
+
+Aynı step metni birden fazla geçiyorsa **tek metod** olarak üretilir (deduplication). Tüm 20+ assertion tipi Gherkin'e eşlenir.
 
 ### 🎯 Element Inspector (Eleman Denetçisi)
 
@@ -120,7 +158,9 @@ Bir elementin ID veya class olmadan benzersiz şekilde seçilip seçilemeyeceği
 
 - Kaydedilen adımları sırayla tarayıcıda çalıştırır
 - React/Angular kontrollu inputlar için native setter pattern
-- Assertion tipleri: `visible`, `text`, `attribute`, `value`, `exists`
+- **20+ assertion tipi:** `visible`, `not-visible`, `exists`, `not-exists`, `text`, `contains-text`, `value`, `attribute`, `css-property`, `css-color`, `dimension`, `position`, `state` (disabled/enabled/checked/focused/readonly), `count`, `class`, `not-class`
+- **10 karşılaştırma operatörü:** `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `contains`, `matches` (regex), `approx` (toleranslı), `color-eq`
+- **Renk normalizasyonu:** hex, rgb, rgba, named renkler otomatik normalize edilir
 - Fail modu: hata durumunda dur veya devam et
 - Zaman aşımı sınırlaması (120 sn tavan)
 
@@ -132,6 +172,9 @@ Bir elementin ID veya class olmadan benzersiz şekilde seçilip seçilemeyeceği
 | **Cypress** | TypeScript | `AppPage` class + getter | `describe()`/`it()` blokları |
 | **Selenium (Python)** | Python | `AppPage` class + `By` tuple | `pytest` class |
 | **Selenium (Java)** | Java | `AppPage` class + `@FindBy` | JUnit 5 test class |
+| **Cucumber (Java)** | Java | `.feature` dosyası (Gherkin) | `StepDefinitions.java` (glue) |
+
+Tüm 20+ assertion tipleri 6 framework'te de desteklenir.
 
 ### 🖥 UI Panelleri
 
@@ -198,9 +241,24 @@ Popup → "Pick Element" butonu
 
 - Fareyi elementlerin üzerinde gezdirin → yeşil overlay + tooltip (tag, id, class, en iyi selector) gösterilir
 - Tıklayın → Popup'ta tüm selector alternatifleri puan sırasına göre listelenir
-- **↑/↓ tuşları** ile sayfadaki tüm interaktif elementler arasında gezinebilirsiniz (shadow DOM ve iframe içindekiler dahil)
-- **Enter** ile seçim yapın, **Escape** ile picker modundan çıkın
 - Her selector'un yanındaki 📋 butonu ile panoya kopyalayın
+
+**Klavye ile gezinme (Picker aktifken):**
+
+| Tuş | İşlev |
+|-----|-------|
+| **↑ / ↓** | 1'er element ileri/geri |
+| **Shift + ↑/↓** | 5'er atla |
+| **PageUp / PageDown** | 10'ar atla |
+| **Home / End** | İlk/son element |
+| **Tab / Shift+Tab** | Sadece form elementleri (input, button) |
+| **1-9** | Tip filtresi: 1=button, 2=input, 3=link, 4=checkbox/radio, 5=select, 6=textarea, 7=img, 8=heading, 9=tümü |
+| **Enter** | Seçili elementi seç |
+| **C** | Seçmeden selector'ı panoya kopyala |
+| **S** | Stress test çalıştır (tooltip'te sonuç) |
+| **Esc** | Picker modundan çık |
+
+> Klavye modu shadow DOM ve iframe içindeki elementleri de kapsar. Alt orta kısımdaki **status bar**'da `[3/42] Filter: Buttons | ↑↓ Navigate ↵ Select Esc Exit C Copy S Stress` formatında bilgi görünür.
 
 ### 2. Selector Doğrulama (Inspector)
 
@@ -339,7 +397,7 @@ DevTools → Recorder → Bir adım seç → "Add Assertion"
 DevTools → Generator sekmesi
 ```
 
-1. **Framework seçin:** Playwright (TS), Cypress (TS), Selenium (Python) veya Selenium (Java/JUnit5)
+1. **Framework seçin:** Playwright (TS), Cypress (TS), Selenium (Python), Selenium (Java/JUnit5) veya Cucumber (Java)
 2. **"Generate POM"** butonuna tıklayın
 3. **Her assertion tipi için** framework'e uygun assertion kodu üretilir:
    - Playwright: `await expect(page.locator(...)).toBeVisible()`
@@ -608,7 +666,9 @@ qa-element-finder/
 │       └── adapters/            # Framework adapterları
 │           ├── playwright.ts
 │           ├── cypress.ts
-│           └── selenium-python.ts
+│           ├── selenium-python.ts
+│           ├── selenium-java.ts
+│           └── cucumber-java.ts
 ├── dist/                   # Build çıktısı (yükle)
 ├── docs/                   # Dokümantasyon
 │   └── factory/            # PRD, mimari, UX, threat model
@@ -624,11 +684,12 @@ qa-element-finder/
 
 ## ⚠️ Bilinen Sınırlamalar
 
-- Shadow DOM elementleri kısmi destek
-- Cross-origin iframe elementleri incelenemez
+- **Açık (open) shadow root** ve **same-origin iframe** desteği tam; kapalı (closed) shadow root'larda elementler incelenemez
+- Cross-origin iframe elementleri incelenemez (tarayıcı güvenlik politikası)
 - Safari desteği Apple Developer Program üyeliği gerektirir
 - Text tabanlı selector'lar dinamik içerikte sınırlı güvenilirlik
-- Headless Chromium'da content script enjeksiyonu çalışmayabilir (normal tarayıcıda sorunsuz)
+- Headless Chromium'da content script enjeksiyonu çalışmayabilir; `context.addInitScript(standaloneCS)` workaround'u `headed-test.ts` içinde mevcut
+- Recorder state sayfa yenilenmesinde kaybolur — navigasyon öncesi kaydı durdurun, sonra yeniden başlatın
 
 ---
 
