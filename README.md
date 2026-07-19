@@ -39,6 +39,48 @@ Tüm veriler **lokal** kalır — hiçbir sunucuya veri gönderilmez, telemetri 
 
 ## ✨ Özellikler
 
+### 🏆 Piyasa Karşılaştırması
+
+| Özellik | QA Element Finder | Katalon Recorder | Selenium IDE | BugBug | Playwright codegen |
+|---------|:---:|:---:|:---:|:---:|:---:|
+| **Ücretsiz ve açık kaynak** | ✅ | ✅ | ✅ | ⚠️ Freemium | ✅ |
+| **Element Inspector** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **6 Stratejili Selector Engine** | ✅ | ❌ (XPath/CSS) | ❌ (XPath/CSS) | ❌ | ❌ |
+| **Self-Healing Selector** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Multi-Tab Recording** | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **DevTools Panel** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Keyboard DOM Walking (↑↓)** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Selector Lab (Verify & Highlight)** | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **Step Editor (Reorder/Delete)** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Selector Stress Test** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Playwright POM** | ✅ | ❌ | ❌ | ❌ | ✅ |
+| **Cypress POM** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Selenium POM** | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Real Typing Simulation** | ✅ | ❌ (JS inject) | ❌ (JS inject) | ✅ | ✅ |
+| **Manifest V3** | ✅ | ✅ | ❌ (V2) | ❌ | N/A |
+| **Cross-browser (Chrome/Edge/Firefox)** | ✅ | ✅ | ⚠️ (Chrome/Firefox) | ❌ (Chrome only) | ✅ |
+| **Gizli Mod (Incognito) Desteği** | ✅ | ✅ | ❌ | ❌ | N/A |
+| **Şifre Maskeleme** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **JSON Export/Import** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **IndexedDB Storage** | ✅ | ❌ | ❌ | ❌ | N/A |
+
+### Yeni Eklenen Özellikler (v2.0)
+
+#### ⌨️ Keyboard DOM Walking
+Element seçici modunda iken **↑/↓** tuşları ile sayfadaki tüm interaktif elementler arasında gezinebilir, **Enter** ile seçim yapabilirsiniz. Mouse ile seçimi zor olan dropdown, tooltip gibi elementler için idealdir.
+
+#### 🩹 Self-Healing Selector (Kendini Onaran Seçici)
+Replay sırasında bir element birincil selector ile bulunamazsa, kayıt sırasında üretilen alternatif selector'lar otomatik olarak (score sırasına göre) denenir. Başarılı olursa adım "healed" olarak işaretlenir ve replay devam eder. Piyasada sadece Katalon Recorder'da bulunan bu özellik artık sizde ücretsiz.
+
+#### 🔬 Selector Lab (Seçici Doğrulama Laboratuvarı)
+Herhangi bir CSS selector veya XPath ifadesini yapıştırın, sayfada eşleşen tüm elementler mavi outline ile vurgulansın. DevTools panelindeki "Lab" sekmesinden erişilir. Selector'larınızı teste koymadan önce doğrulayın.
+
+#### 📝 Step Editor (Adım Düzenleyici)
+Kaydedilen test adımlarını kayıt sonrası düzenleyin: sıralamayı değiştirmek için ↑↓ okları, gereksiz adımları silmek için 🗑️ butonu. Yeniden kaydetmeye gerek kalmadan testlerinizi optimize edin.
+
+#### 💪 Selector Stress Test (Seçici Dayanıklılık Testi)
+Bir elementin ID veya class olmadan benzersiz şekilde seçilip seçilemeyeceğini test eder. Dinamik ID/class kullanan sayfalarda selector'larınızın ne kadar dayanıklı olduğunu görün.
+
 ### 🎯 Element Inspector (Eleman Denetçisi)
 
 | Özellik | Açıklama |
@@ -343,9 +385,11 @@ qa-element-finder/
 │   ├── background/          # Service worker
 │   ├── content-script/      # DOM enjeksiyonu
 │   │   ├── index.ts         # Ana giriş, postMessage bridge
-│   │   ├── element-picker.ts # Picker + overlay
+│   │   ├── element-picker.ts # Picker + overlay (↑↓ keyboard DOM walking)
 │   │   ├── recorder.ts      # Aksiyon kaydedici
-│   │   └── player.ts        # Replay motoru
+│   │   ├── player.ts        # Replay motoru (self-healing selector)
+│   │   ├── selector-verify.ts # Selector doğrulama ve highlight
+│   │   └── standalone.ts    # Self-contained bundle (Playwright addInitScript)
 │   ├── devtools/            # DevTools panel (React)
 │   │   ├── panel.tsx        # Ana panel (4 sekme)
 │   │   └── devtools-init.ts # DevTools başlatma

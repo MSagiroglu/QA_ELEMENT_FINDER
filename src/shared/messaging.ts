@@ -4,7 +4,9 @@ export type MessageType =
   | 'EXECUTE_STEP' | 'STEP_RESULT'
   | 'PLAY_TEST' | 'PLAY_STEP' | 'PLAY_COMPLETE'
   | 'GET_PAGE_ELEMENTS' | 'PAGE_ELEMENTS'
-  | 'EXPORT_TEST' | 'IMPORT_TEST';
+  | 'EXPORT_TEST' | 'IMPORT_TEST'
+  | 'VERIFY_SELECTOR'
+  | 'CLEAR_VERIFY';
 
 export interface ExtensionMessage {
   type: MessageType;

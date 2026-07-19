@@ -1,6 +1,7 @@
 import { activatePicker, deactivatePicker } from './element-picker';
 import { startRecording, stopRecording } from './recorder';
 import { playSteps, stopPlaying } from './player';
+import { highlightSelector, clearVerifyOverlay } from './selector-verify';
 
 window.addEventListener('message', async (event: MessageEvent) => {
   if (event.data?.source === 'qa-extension-page') {
@@ -49,6 +50,12 @@ window.addEventListener('message', async (event: MessageEvent) => {
         stopPlaying();
         response = { success: true };
         break;
+
+      case 'VERIFY_SELECTOR': {
+        const results = highlightSelector(msg.payload.selector, msg.payload.type || 'css');
+        response = { success: true, data: results };
+        break;
+      }
 
       default:
         response = await chrome.runtime.sendMessage({ type: msg.command, payload: msg.payload }).catch(() => ({
@@ -111,8 +118,21 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: a
       sendResponse({ success: true });
       break;
 
+    case 'VERIFY_SELECTOR': {
+      const results = highlightSelector(message.payload.selector, message.payload.type || 'css');
+      sendResponse({ success: true, data: results });
+      break;
+    }
+
+    case 'CLEAR_VERIFY':
+      clearVerifyOverlay();
+      sendResponse({ success: true });
+      break;
+
     default:
       sendResponse({ success: false, error: 'Unknown message type' });
   }
   return true;
 });
+
+// Selector verification imported from ./selector-verify

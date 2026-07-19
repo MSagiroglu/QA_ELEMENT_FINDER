@@ -208,6 +208,67 @@ export function extractPageElement(el: Element): PageElement {
   };
 }
 
+export function checkSelectorResilience(el: Element): {
+  uniqueWithoutId: boolean;
+  uniqueWithoutClass: boolean;
+  semanticOnly: boolean;
+  details: string[];
+} {
+  const details: string[] = [];
+  const tag = el.tagName.toLowerCase();
+  const hasId = !!el.id;
+  const hasClasses = el.classList.length > 0;
+
+  // Check if element can be uniquely identified without id
+  let uniqueWithoutId = true;
+  if (hasId) {
+    const originalId = el.id;
+    try {
+      (el as HTMLElement).id = '';
+      const selectorsNoId = generateUniqueSelectors(el);
+      uniqueWithoutId = selectorsNoId.some(s => s.matchCount === 1);
+    } catch { uniqueWithoutId = false; }
+    try { (el as HTMLElement).id = originalId; } catch {}
+    details.push(uniqueWithoutId ? '✅ Unique without ID' : '❌ Relies on ID');
+  } else {
+    details.push('⏭️ No ID to test');
+  }
+
+  // Check without classes
+  let uniqueWithoutClass = true;
+  if (hasClasses) {
+    const originalClasses = el.className;
+    try {
+      el.className = '';
+      const selectorsNoClass = generateUniqueSelectors(el);
+      uniqueWithoutClass = selectorsNoClass.some(s => s.matchCount === 1);
+    } catch { uniqueWithoutClass = false; }
+    try { el.className = originalClasses; } catch {}
+    details.push(uniqueWithoutClass ? '✅ Unique without classes' : '❌ Relies on classes');
+  } else {
+    details.push('⏭️ No classes to test');
+  }
+
+  // Semantic only (tag + role + aria-label)
+  let semanticOnly = false;
+  const role = el.getAttribute('role');
+  const ariaLabel = el.getAttribute('aria-label');
+  if (role || ariaLabel || ['button','a','input','select','textarea','nav','header','footer','main','h1','h2','h3','h4','h5','h6'].includes(tag)) {
+    const semanticSelector = role
+      ? `[role="${role}"]${ariaLabel ? `[aria-label="${ariaLabel}"]` : ''}`
+      : `${tag}${ariaLabel ? `[aria-label="${ariaLabel}"]` : ''}`;
+    try {
+      const count = document.querySelectorAll(semanticSelector).length;
+      semanticOnly = count === 1;
+    } catch { semanticOnly = false; }
+    details.push(semanticOnly ? '✅ Semantic selector unique' : '⚠️ Semantic selector not unique');
+  } else {
+    details.push('⏭️ No semantic attributes');
+  }
+
+  return { uniqueWithoutId, uniqueWithoutClass, semanticOnly, details };
+}
+
 export function queryElement(selectorSet: SelectorSet, doc: Document = document): Element | null {
   try {
     if (selectorSet.strategy === 'xpath') {

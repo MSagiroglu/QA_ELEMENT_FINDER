@@ -13,7 +13,7 @@ function safeSendMessage(msg: any): void {
   } catch {}
 }
 
-export async function playSteps(steps: Array<{ action: string; target: string; value?: string }>): Promise<{ stepResults: any[]; passed: boolean; duration: number }> {
+export async function playSteps(steps: Array<{ action: string; target: string; value?: string; selectors?: Array<{ strategy: string; selector: string; score: number }> }>): Promise<{ stepResults: any[]; passed: boolean; duration: number }> {
   if (playing) return { stepResults: [], passed: false, duration: 0 };
   playing = true;
   abortController = false;
@@ -28,17 +28,17 @@ export async function playSteps(steps: Array<{ action: string; target: string; v
 
     try {
       const result = await executeStep(step);
-      stepResults.push({ stepIndex: i, passed: result.passed, error: result.error, action: step.action });
+      stepResults.push({ stepIndex: i, passed: result.passed, error: result.error, action: step.action, healed: result.healed });
 
       safeSendMessage({
         type: 'STEP_RESULT',
-        payload: { stepIndex: i, passed: result.passed, error: result.error }
+        payload: { stepIndex: i, passed: result.passed, error: result.error, healed: result.healed }
       });
     } catch (err: any) {
-      stepResults.push({ stepIndex: i, passed: false, error: err.message });
+      stepResults.push({ stepIndex: i, passed: false, error: err.message, healed: false });
       safeSendMessage({
         type: 'STEP_RESULT',
-        payload: { stepIndex: i, passed: false, error: err.message }
+        payload: { stepIndex: i, passed: false, error: err.message, healed: false }
       });
       const settings = await getPlaySettings();
       if (settings.failMode === 'stop') break;
@@ -67,8 +67,8 @@ export function stopPlaying(): void {
   playing = false;
 }
 
-async function executeStep(step: { action: string; target: string; value?: string; assertion?: { type: string; expected: string; kind: string } }): Promise<{ passed: boolean; error?: string }> {
-  const element = findElement(step.target);
+async function executeStep(step: { action: string; target: string; value?: string; assertion?: { type: string; expected: string; kind: string }; selectors?: Array<{ strategy: string; selector: string; score: number }> }): Promise<{ passed: boolean; error?: string; healed?: boolean }> {
+  const { element, healed } = findElementWithHealing(step.target, step.selectors || []);
   if (!element) return { passed: false, error: `Element not found: ${step.target}` };
 
   switch (step.action) {
@@ -115,22 +115,22 @@ async function executeStep(step: { action: string; target: string; value?: strin
       if (!assertion) return { passed: false, error: 'No assertion type specified' };
       switch (assertion.type) {
         case 'visible':
-          return { passed: element.isConnected && (element as HTMLElement).offsetParent !== null };
+          return { passed: element.isConnected && (element as HTMLElement).offsetParent !== null, healed };
         case 'text':
-          return { passed: element.textContent?.trim() === assertion.expected };
+          return { passed: element.textContent?.trim() === assertion.expected, healed };
         case 'attribute': {
           const eqIdx = assertion.expected.indexOf('=');
           if (eqIdx > 0) {
             const attrName = assertion.expected.slice(0, eqIdx);
             const attrValue = assertion.expected.slice(eqIdx + 1);
-            return { passed: element.getAttribute(attrName) === attrValue };
+            return { passed: element.getAttribute(attrName) === attrValue, healed };
           }
-          return { passed: element.hasAttribute(assertion.expected) };
+          return { passed: element.hasAttribute(assertion.expected), healed };
         }
         case 'value':
-          return { passed: (element as HTMLInputElement).value === assertion.expected };
+          return { passed: (element as HTMLInputElement).value === assertion.expected, healed };
         case 'exists':
-          return { passed: element.isConnected };
+          return { passed: element.isConnected, healed };
         default:
           return { passed: false, error: `Unknown assertion type: ${assertion.type}` };
       }
@@ -138,7 +138,7 @@ async function executeStep(step: { action: string; target: string; value?: strin
     default: break;
   }
 
-  return { passed: true };
+  return { passed: true, healed };
 }
 
 function findElement(selector: string): Element | null {
@@ -152,6 +152,24 @@ function findElement(selector: string): Element | null {
   } catch {
     return null;
   }
+}
+
+function findElementWithHealing(primarySelector: string, backupSelectors: Array<{ strategy: string; selector: string; score: number }>): { element: Element | null; healed: boolean } {
+  // Try primary first
+  const primary = findElement(primarySelector);
+  if (primary) return { element: primary, healed: false };
+
+  // Self-heal: try backup selectors in score order
+  if (backupSelectors && backupSelectors.length > 0) {
+    const sorted = [...backupSelectors].sort((a, b) => b.score - a.score);
+    for (const alt of sorted) {
+      if (alt.selector === primarySelector) continue;
+      const el = findElement(alt.selector);
+      if (el) return { element: el, healed: true };
+    }
+  }
+
+  return { element: null, healed: false };
 }
 
 async function waitAndCheck(ms: number, element: Element): Promise<{ passed: boolean; error?: string }> {

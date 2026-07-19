@@ -1,6 +1,7 @@
 import { activatePicker, deactivatePicker } from './element-picker';
 import { startRecording, stopRecording } from './recorder';
 import { playSteps, stopPlaying } from './player';
+import { highlightSelector, clearVerifyOverlay } from './selector-verify';
 
 function safeChromeRuntimeSendMessage(msg: any): Promise<any> {
   try {
@@ -56,6 +57,17 @@ window.addEventListener('message', async (event: MessageEvent) => {
 
       case 'STOP_PLAYING':
         stopPlaying();
+        response = { success: true };
+        break;
+
+      case 'VERIFY_SELECTOR': {
+        const results = highlightSelector(msg.payload.selector, msg.payload.type || 'css');
+        response = { success: true, data: results };
+        break;
+      }
+
+      case 'CLEAR_VERIFY':
+        clearVerifyOverlay();
         response = { success: true };
         break;
 

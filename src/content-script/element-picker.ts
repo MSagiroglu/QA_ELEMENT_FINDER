@@ -5,11 +5,17 @@ let hoveredElement: Element | null = null;
 let overlayContainer: HTMLDivElement | null = null;
 let tooltipElement: HTMLDivElement | null = null;
 let callback: ((element: Element) => void) | null = null;
+let keyboardMode = false;
+let keyboardIndex = -1;
+let keyboardElements: Element[] = [];
 
 export function activatePicker(onPick: (element: Element) => void): void {
   if (pickerActive) return;
   pickerActive = true;
   callback = onPick;
+  keyboardMode = false;
+  keyboardElements = [];
+  keyboardIndex = -1;
   createOverlay();
   document.addEventListener('mouseover', onMouseOver, true);
   document.addEventListener('mouseout', onMouseOut, true);
@@ -21,7 +27,10 @@ export function deactivatePicker(): void {
   if (!pickerActive) return;
   pickerActive = false;
   callback = null;
+  keyboardMode = false;
+  keyboardElements = [];
   removeOverlay();
+  clearKeyboardHighlight();
   document.removeEventListener('mouseover', onMouseOver, true);
   document.removeEventListener('mouseout', onMouseOut, true);
   document.removeEventListener('click', onClick, true);
@@ -57,6 +66,11 @@ function removeOverlay(): void {
 
 function onMouseOver(e: MouseEvent): void {
   if (!pickerActive) return;
+  if (keyboardMode) {
+    keyboardMode = false;
+    clearKeyboardHighlight();
+    keyboardElements = [];
+  }
   const target = e.target as Element;
   if (target === overlayContainer || target === tooltipElement) return;
   hoveredElement = target;
@@ -112,9 +126,87 @@ function onClick(e: MouseEvent): void {
   deactivatePicker();
 }
 
+function getInteractableElements(): Element[] {
+  const all = document.querySelectorAll('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="searchbox"], [role="combobox"], label, iframe, video, audio, details, summary, [onclick], [contenteditable="true"]');
+  return Array.from(all).filter(el => {
+    if (!(el instanceof HTMLElement)) return false;
+    const style = getComputedStyle(el);
+    return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+  });
+}
+
+function clearKeyboardHighlight(): void {
+  keyboardElements.forEach(el => {
+    (el as HTMLElement).style.outline = '';
+  });
+}
+
+function highlightKeyboardElement(index: number): void {
+  clearKeyboardHighlight();
+  if (index < 0 || index >= keyboardElements.length) return;
+  const el = keyboardElements[index] as HTMLElement;
+  el.style.outline = '3px solid #3B82F6';
+  el.style.outlineOffset = '2px';
+  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  hoveredElement = el;
+  if (tooltipElement) {
+    const tag = el.tagName.toLowerCase();
+    const id = el.id ? `#${el.id}` : '';
+    const cls = Array.from(el.classList).slice(0, 3).join('.');
+    const primarySelector = extractQuickSelector(el);
+    tooltipElement.textContent = `${tag}${id}${cls ? '.' + cls : ''} | ${primarySelector || 'no unique selector'} (keyboard)`;
+    tooltipElement.style.display = 'block';
+    const rect = el.getBoundingClientRect();
+    tooltipElement.style.left = Math.min(rect.left, window.innerWidth - 410) + 'px';
+    tooltipElement.style.top = rect.bottom + 8 + 'px';
+  }
+  if (overlayContainer) {
+    overlayContainer.style.outline = '2px solid #60A5FA';
+    overlayContainer.style.outlineOffset = '-2px';
+    overlayContainer.style.boxShadow = 'inset 0 0 0 1px rgba(96, 165, 250, 0.3)';
+  }
+}
+
 function onKeyDown(e: KeyboardEvent): void {
   if (e.key === 'Escape') {
+    if (keyboardMode) {
+      keyboardMode = false;
+      clearKeyboardHighlight();
+      keyboardElements = [];
+    } else {
+      deactivatePicker();
+    }
+    return;
+  }
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!keyboardMode) {
+      keyboardMode = true;
+      clearKeyboardHighlight();
+      keyboardElements = getInteractableElements();
+      keyboardIndex = e.key === 'ArrowDown' ? 0 : keyboardElements.length - 1;
+    } else {
+      keyboardIndex += e.key === 'ArrowDown' ? 1 : -1;
+      if (keyboardIndex < 0) keyboardIndex = keyboardElements.length - 1;
+      if (keyboardIndex >= keyboardElements.length) keyboardIndex = 0;
+    }
+
+    highlightKeyboardElement(keyboardIndex);
+    return;
+  }
+
+  if (e.key === 'Enter' && keyboardMode && keyboardIndex >= 0 && keyboardIndex < keyboardElements.length) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = keyboardElements[keyboardIndex];
+    if (el && callback) {
+      callback(el);
+    }
     deactivatePicker();
+    return;
   }
 }
 

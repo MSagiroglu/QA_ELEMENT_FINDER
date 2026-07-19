@@ -3,7 +3,7 @@ import './panel.css';
 import { generateCombinedCode } from '../shared/codegen-service';
 import type { Framework } from '../shared/types';
 
-type TabId = 'inspector' | 'generator' | 'recorder' | 'player';
+type TabId = 'inspector' | 'generator' | 'recorder' | 'player' | 'lab';
 
 function Svg({ name, size = 14 }: { name: string; size?: number }) {
   const paths: Record<string, string> = {
@@ -20,6 +20,9 @@ function Svg({ name, size = 14 }: { name: string; size?: number }) {
     check: 'M5 13l4 4L19 7',
     close: 'M6 18L18 6M6 6l12 12',
     search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+    up: 'M5 15l7-7 7 7',
+    down: 'M19 9l-7 7-7-7',
+    trash: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
   };
   return React.createElement('svg', {
     width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
@@ -100,6 +103,7 @@ export const DevToolsPanel: React.FC = () => {
     { id: 'generator', label: 'Generator', icon: 'code' },
     { id: 'recorder', label: 'Recorder', icon: 'record' },
     { id: 'player', label: 'Player', icon: 'play' },
+    { id: 'lab', label: 'Lab', icon: 'search' },
   ];
 
   return (
@@ -199,6 +203,7 @@ export const DevToolsPanel: React.FC = () => {
               onReset={() => { setPlayStatus('idle'); setPlayResults([]); }}
             />
           )}
+          {activeTab === 'lab' && <LabPanel getTabId={getTabId} />}
         </div>
       </div>
     </div>
@@ -331,6 +336,19 @@ function GeneratorPanel({ framework, onFrameworkChange, pageElements, codeOutput
 
 /* ===== RECORDER ===== */
 function RecorderPanel({ isRecording, steps, onStart, onStop, onStepsChange }: any) {
+  const moveStep = (from: number, to: number) => {
+    if (to < 0 || to >= steps.length) return;
+    const copy = [...steps];
+    const [moved] = copy.splice(from, 1);
+    copy.splice(to, 0, moved);
+    onStepsChange(copy);
+  };
+
+  const deleteStep = (index: number) => {
+    const copy = steps.filter((_: any, i: number) => i !== index);
+    onStepsChange(copy);
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center' }}>
@@ -376,7 +394,14 @@ function RecorderPanel({ isRecording, steps, onStart, onStop, onStepsChange }: a
             <span style={{ color: 'var(--text-muted)', width: 20, fontSize: 11, flexShrink: 0 }}>{i + 1}</span>
             <span className="step-action" data-action={step.action}>{step.action}</span>
             <span className="step-target">{step.target}</span>
-            {step.value && <span style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--mono)', flexShrink: 0, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{step.value.slice(0, 30)}"</span>}
+            {step.value && <span style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--mono)', flexShrink: 0, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{step.value.slice(0, 25)}"</span>}
+            {!isRecording && (
+              <span style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                <button className="btn btn-sm btn-ghost" style={{ padding: '2px 4px', fontSize: 10 }} onClick={() => moveStep(i, i - 1)} title="Move up"><Svg name="up" size={10} /></button>
+                <button className="btn btn-sm btn-ghost" style={{ padding: '2px 4px', fontSize: 10 }} onClick={() => moveStep(i, i + 1)} title="Move down"><Svg name="down" size={10} /></button>
+                <button className="btn btn-sm btn-ghost" style={{ padding: '2px 4px', fontSize: 10, color: 'var(--error)' }} onClick={() => deleteStep(i)} title="Delete"><Svg name="trash" size={10} /></button>
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -396,8 +421,104 @@ function RecorderPanel({ isRecording, steps, onStart, onStop, onStepsChange }: a
 }
 
 /* ===== PLAYER ===== */
+/* ===== LAB (Selector Verify) ===== */
+function LabPanel({ getTabId }: { getTabId: () => Promise<number | undefined> }) {
+  const [selectorInput, setSelectorInput] = useState('');
+  const [selectorType, setSelectorType] = useState<'css' | 'xpath'>('css');
+  const [verifyResult, setVerifyResult] = useState<{ matchCount: number; selector: string } | null>(null);
+  const [verifyError, setVerifyError] = useState('');
+
+  const doVerify = async () => {
+    if (!selectorInput.trim()) return;
+    setVerifyError('');
+    setVerifyResult(null);
+    const tabId = await getTabId();
+    if (!tabId) { setVerifyError('No active tab'); return; }
+    chrome.tabs.sendMessage(tabId, { type: 'VERIFY_SELECTOR', payload: { selector: selectorInput.trim(), type: selectorType } }, (res: any) => {
+      if (res?.success && res.data) {
+        setVerifyResult(res.data);
+        if (res.data.matchCount === 0) setVerifyError('No elements matched');
+      } else {
+        setVerifyError(res?.error || 'Verification failed');
+      }
+    });
+  };
+
+  const clearHighlight = async () => {
+    const tabId = await getTabId();
+    if (tabId) chrome.tabs.sendMessage(tabId, { type: 'CLEAR_VERIFY' }).catch(() => {});
+    setVerifyResult(null);
+    setVerifyError('');
+  };
+
+  return (
+    <div>
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 16, height: 16, borderRadius: 4, background: 'var(--accent-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--accent)' }}>🔬</span>
+          Selector Lab
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          <select className="framework-select" style={{ width: 100 }} value={selectorType} onChange={e => setSelectorType(e.target.value as any)}>
+            <option value="css">CSS</option>
+            <option value="xpath">XPath</option>
+          </select>
+          <input
+            type="text"
+            placeholder={selectorType === 'css' ? '#my-id, .my-class, [data-testid="x"]' : '//div[@id="main"]'}
+            value={selectorInput}
+            onChange={e => setSelectorInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') doVerify(); }}
+            style={{
+              flex: 1, padding: '7px 10px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg)', border: '1px solid var(--border)',
+              color: 'var(--text)', fontSize: 12, fontFamily: 'var(--mono)',
+              outline: 'none',
+            }}
+          />
+          <button className="btn btn-primary btn-sm" onClick={doVerify}>
+            <Svg name="search" size={12} /> Verify
+          </button>
+        </div>
+        {verifyResult && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: verifyResult.matchCount > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
+            <span style={{
+              padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+              background: verifyResult.matchCount > 0 ? 'var(--success)' : 'var(--error)',
+              color: '#fff',
+            }}>{verifyResult.matchCount}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              element{verifyResult.matchCount !== 1 ? 's' : ''} matched
+            </span>
+            <code style={{ color: 'var(--accent)', fontFamily: 'var(--mono)', fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{verifyResult.selector}</code>
+            <button className="btn btn-ghost btn-sm" onClick={clearHighlight}>
+              <Svg name="close" size={10} /> Clear
+            </button>
+          </div>
+        )}
+        {verifyError && !verifyResult && (
+          <div style={{ color: 'var(--error)', fontSize: 12, padding: '8px 10px', background: 'var(--error-bg)', borderRadius: 'var(--radius-sm)' }}>
+            {verifyError}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13 }}>Tips</div>
+        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+          <li>Paste any CSS selector or XPath to highlight matching elements</li>
+          <li>Playwright locators: <code style={{ color: 'var(--accent)', fontFamily: 'var(--mono)' }}>[role="button"][aria-label="Submit"]</code></li>
+          <li>data-testid: <code style={{ color: 'var(--accent)', fontFamily: 'var(--mono)' }}>[data-testid="login-btn"]</code></li>
+          <li>Use the Inspector tab to pick elements and see all available selectors</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function PlayerPanel({ steps, status, results, onPlay, onReset }: any) {
   const passedCount = results.filter((r: any) => r.passed).length;
+  const healedCount = results.filter((r: any) => r.healed).length;
 
   return (
     <div>
@@ -427,6 +548,7 @@ function PlayerPanel({ steps, status, results, onPlay, onReset }: any) {
         )}
         <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 'auto' }}>
           {results.length > 0 ? `${passedCount}/${steps.length} passed` : `${steps.length} steps`}
+          {healedCount > 0 && <span style={{ marginLeft: 8, color: 'var(--warning)', fontSize: 11, fontWeight: 600 }}>⚡{healedCount} healed</span>}
         </span>
       </div>
 
@@ -462,6 +584,9 @@ function PlayerPanel({ steps, status, results, onPlay, onReset }: any) {
               </span>
               <span className="step-action" data-action={step.action}>{step.action}</span>
               <span className="step-target">{step.target}</span>
+              {result?.healed && (
+                <span style={{ color: 'var(--warning)', fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: 'rgba(245,158,11,0.15)', flexShrink: 0 }}>HEALED</span>
+              )}
               {result?.error && (
                 <span style={{ color: 'var(--error)', fontSize: 11, fontFamily: 'var(--mono)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {result.error}

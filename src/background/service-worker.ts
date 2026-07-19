@@ -68,6 +68,8 @@ chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.Messa
   switch (message.type) {
     case 'ACTIVATE_PICKER':
     case 'DEACTIVATE_PICKER':
+    case 'VERIFY_SELECTOR':
+    case 'CLEAR_VERIFY':
       forwardToTab(tabId, message.type, message.payload, sendResponse);
       return true;
 
