@@ -28,7 +28,7 @@
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["content-script.js"],
+    "js": ["content-script-standalone.js"],
     "run_at": "document_idle"
   }],
   "devtools_page": "devtools/devtools-init.html",
