@@ -57,6 +57,27 @@ if (existsSync(ICONS_SRC)) {
   console.log('  ✓ icons copied to dist/icons/');
 }
 
+// Reorganize HTML files: Vite outputs them to dist/src/{popup,options,devtools}/*
+// but manifest references them as {popup,options,devtools}/* (without src/).
+// Copy each HTML + sibling assets so Chrome can find them at the manifest paths.
+const HTML_MAP = [
+  { src: 'src/popup/index.html', dst: 'popup/index.html' },
+  { src: 'src/options/index.html', dst: 'options/index.html' },
+  { src: 'src/devtools/devtools-init.html', dst: 'devtools/devtools-init.html' },
+  { src: 'src/devtools/index.html', dst: 'devtools/index.html' },
+];
+for (const { src, dst } of HTML_MAP) {
+  const srcPath = resolve(DIST_DIR, src);
+  const dstPath = resolve(DIST_DIR, dst);
+  if (existsSync(srcPath)) {
+    mkdirSync(dirname(dstPath), { recursive: true });
+    copyFileSync(srcPath, dstPath);
+    console.log(`  ✓ ${src} -> ${dst}`);
+  } else {
+    console.warn(`  ⚠ ${src} not found, skipping`);
+  }
+}
+
 console.log('\nBuild complete. Files in dist/:');
 for (const entry of readdirSync(DIST_DIR, { withFileTypes: true })) {
   console.log(`  ${entry.isDirectory() ? '📁' : '📄'} ${entry.name}`);
