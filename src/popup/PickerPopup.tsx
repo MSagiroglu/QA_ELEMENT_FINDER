@@ -89,7 +89,14 @@ export const PickerPopup: React.FC = () => {
   const activatePicker = useCallback(() => {
     setPicking(true);
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' });
+      if (tab?.id) {
+        chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' }, (res) => {
+          if (chrome.runtime.lastError) {
+            console.warn('[QA Finder] Content script not loaded:', chrome.runtime.lastError.message);
+            setPicking(false);
+          }
+        });
+      }
       setTimeout(() => window.close(), 300);
     });
   }, []);
@@ -106,7 +113,9 @@ export const PickerPopup: React.FC = () => {
           }
         });
       } else {
-        chrome.tabs.sendMessage(tab.id, { type: 'START_RECORDING' });
+        chrome.tabs.sendMessage(tab.id, { type: 'START_RECORDING' }, () => {
+          if (chrome.runtime.lastError) console.warn('[QA Finder] START_RECORDING failed:', chrome.runtime.lastError.message);
+        });
       }
     });
   }, [isRecording]);
