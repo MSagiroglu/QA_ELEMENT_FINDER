@@ -83,4 +83,74 @@ window.addEventListener('message', async (event: MessageEvent) => {
   }
 });
 
+// ─── chrome.runtime.onMessage bridge (background → content script) ───
+// background service worker chrome.tabs.sendMessage() ile mesaj gönderdiğinde
+// bu listener devreye girer. window.postMessage bridge'i sadece popup panel için çalışır.
+chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response?: any) => void) => {
+  switch (message.type) {
+    case 'ACTIVATE_PICKER':
+      activatePicker((element: Element) => {
+        const tag = element.tagName.toLowerCase();
+        const id = element.id;
+        const classes = Array.from(element.classList);
+        const attrs: Record<string, string> = {};
+        element.getAttributeNames().forEach(name => { attrs[name] = element.getAttribute(name) || ''; });
+        safeChromeRuntimeSendMessage({
+          type: 'ELEMENT_SELECTED',
+          payload: { tagName: tag, id, classes, attributes: attrs, text: element.textContent?.trim().slice(0, 100) }
+        });
+      });
+      sendResponse({ success: true });
+      break;
+
+    case 'DEACTIVATE_PICKER':
+      deactivatePicker();
+      sendResponse({ success: true });
+      break;
+
+    case 'START_RECORDING':
+      startRecording();
+      sendResponse({ success: true });
+      break;
+
+    case 'STOP_RECORDING_INTERNAL':
+      stopRecording();
+      sendResponse({ success: true });
+      break;
+
+    case 'STOP_RECORDING': {
+      const result = stopRecording();
+      sendResponse({ success: true, data: result });
+      break;
+    }
+
+    case 'PLAY_TEST': {
+      playSteps(message.payload.steps).then(result => {
+        sendResponse({ success: true, data: result });
+      });
+      return true;
+    }
+
+    case 'STOP_PLAYING':
+      stopPlaying();
+      sendResponse({ success: true });
+      break;
+
+    case 'VERIFY_SELECTOR': {
+      const results = highlightSelector(message.payload.selector, message.payload.type || 'css');
+      sendResponse({ success: true, data: results });
+      break;
+    }
+
+    case 'CLEAR_VERIFY':
+      clearVerifyOverlay();
+      sendResponse({ success: true });
+      break;
+
+    default:
+      sendResponse({ success: false, error: 'Unknown message type' });
+  }
+  return true;
+});
+
 safeChromeRuntimeSendMessage({ type: 'CONTENT_SCRIPT_READY' });
