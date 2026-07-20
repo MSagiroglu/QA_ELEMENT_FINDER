@@ -59,6 +59,8 @@ export const PickerPopup: React.FC = () => {
   const [picking, setPicking] = useState(false);
 
   useEffect(() => {
+    console.log('[Popup] Initializing...');
+
     const handleMessage = (msg: any) => {
       if (msg.type === 'RECORD_START') { setIsRecording(true); setStepCount(0); setTabCount(1); }
       else if (msg.type === 'RECORD_STOP') { setIsRecording(false); setTabCount(0); }
@@ -87,8 +89,11 @@ export const PickerPopup: React.FC = () => {
   }
 
   const activatePicker = useCallback(() => {
+    console.log('[Popup] activatePicker called');
+
     setPicking(true);
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      console.log('[Popup] Query result - tabId:', tab?.id);
       if (tab?.id) {
         chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_PICKER' }, (res) => {
           if (chrome.runtime.lastError) {

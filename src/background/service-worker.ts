@@ -59,6 +59,8 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // ─── Message Router ───
 chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+  console.log('[Background] onMessage received:', message.type, 'from:', sender);
+
   if (sender.id !== chrome.runtime.id) {
     sendResponse({ success: false, error: 'Invalid sender' });
     return;
@@ -175,7 +177,13 @@ function forwardToTab(tabId: number | undefined, type: string, payload: any, cal
     callback({ success: false, error: 'No tab ID' });
     return;
   }
-  chrome.tabs.sendMessage(tabId, { type, payload }, callback);
+  console.log('[Background] forwardToTab:', type, '→ tabId:', tabId);
+  chrome.tabs.sendMessage(tabId, { type, payload }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[Background] sendMessage failed:', chrome.runtime.lastError.message);
+    }
+    callback(response);
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {

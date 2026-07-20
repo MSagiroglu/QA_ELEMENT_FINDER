@@ -87,6 +87,7 @@ window.addEventListener('message', async (event: MessageEvent) => {
 // background service worker chrome.tabs.sendMessage() ile mesaj gönderdiğinde
 // bu listener devreye girer. window.postMessage bridge'i sadece popup panel için çalışır.
 chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response?: any) => void) => {
+  console.log('[ContentScript] onMessage received:', message.type, 'from:', sender?.id);
   switch (message.type) {
     case 'ACTIVATE_PICKER':
       activatePicker((element: Element) => {
